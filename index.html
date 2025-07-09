@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Piggy Photos 🐷📸</title>
 <style>
-  body {
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    overflow: hidden; /* Bloquea scroll vertical/horizontal */
+    touch-action: none; /* Bloquea gestos táctiles como zoom y scroll */
+    user-select: none;
     background: #ffc0cb;
     font-family: 'Comic Sans MS', cursive, sans-serif;
-    margin: 0; padding: 0;
     text-align: center;
-    overflow-x: hidden;
-    user-select: none;
-    touch-action: manipulation;
   }
   #canvas {
     border: 4px dashed #cc3366;
     background: white;
     max-width: 95vw;
-    touch-action: none; /* ¡Esto evita el scroll al dibujar! */
+    touch-action: none; /* Bloquea gestos táctiles en el canvas */
   }
   button, input, select {
     margin: 5px;
@@ -26,6 +26,13 @@
     border-radius: 10px;
     font-size: 1em;
     border: none;
+    cursor: pointer;
+  }
+  #stickers span {
+    font-size: 40px;
+    cursor: grab;
+    user-select: none;
+    margin: 0 5px;
   }
 </style>
 </head>
@@ -35,13 +42,17 @@
 
 <input type="file" id="upload" accept="image/*" />
 <input type="color" id="colorPicker" value="#ff0000" />
-<button onclick="toggleBrush()">🖌️ Pincel</button>
+<button id="btnToggleBrush">🖌️ Pincel ON</button>
 <button onclick="clearCanvas()">🧹 Limpiar</button>
 <button onclick="save()">💾 Guardar</button>
+
 <br />
+
 <canvas id="canvas" width="400" height="400"></canvas>
+
 <br />
-<div id="stickers">
+
+<div id="stickers" title="Arrastra los stickers al lienzo">
   <span draggable="true">🐷</span>
   <span draggable="true">🐽</span>
   <span draggable="true">🐖</span>
@@ -52,27 +63,41 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const upload = document.getElementById("upload");
 const colorPicker = document.getElementById("colorPicker");
+const btnToggleBrush = document.getElementById("btnToggleBrush");
 
 let painting = false;
 let brushEnabled = true;
 
+// Evitar scroll y gestos del navegador en el canvas y document body
+['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(evt => {
+  document.body.addEventListener(evt, e => {
+    if (e.target === canvas || canvas.contains(e.target)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+});
+
 canvas.addEventListener("touchstart", e => {
-  e.preventDefault(); // ← bloquea scroll en Android
-  if (brushEnabled) {
-    painting = true;
-    drawTouch(e.touches[0]);
-  }
+  if (!brushEnabled) return;
+  painting = true;
+  drawTouch(e.touches[0]);
 }, { passive: false });
 
 canvas.addEventListener("touchmove", e => {
-  e.preventDefault(); // ← bloquea scroll en Android
-  if (painting && brushEnabled) drawTouch(e.touches[0]);
+  if (!painting || !brushEnabled) return;
+  drawTouch(e.touches[0]);
 }, { passive: false });
 
-canvas.addEventListener("touchend", () => painting = false);
+canvas.addEventListener("touchend", e => {
+  painting = false;
+}, { passive: false });
 
-canvas.addEventListener("mousedown", () => painting = brushEnabled);
-canvas.addEventListener("mouseup", () => painting = false);
+canvas.addEventListener("mousedown", () => {
+  if (brushEnabled) painting = true;
+});
+canvas.addEventListener("mouseup", () => {
+  painting = false;
+});
 canvas.addEventListener("mousemove", e => {
   if (painting && brushEnabled) drawMouse(e);
 });
@@ -93,10 +118,10 @@ function drawTouch(touch) {
   ctx.fill();
 }
 
-function toggleBrush() {
+btnToggleBrush.addEventListener("click", () => {
   brushEnabled = !brushEnabled;
-  alert("Pincel: " + (brushEnabled ? "Activado" : "Desactivado"));
-}
+  btnToggleBrush.textContent = brushEnabled ? "🖌️ Pincel ON" : "❌ Pincel OFF";
+});
 
 function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -111,12 +136,14 @@ function save() {
 
 upload.addEventListener("change", e => {
   const file = e.target.files[0];
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = evt => {
     const img = new Image();
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
     };
     img.src = evt.target.result;
@@ -124,7 +151,7 @@ upload.addEventListener("change", e => {
   reader.readAsDataURL(file);
 });
 
-// Drag & Drop stickers
+// Stickers arrastrables
 document.querySelectorAll("#stickers span").forEach(sticker => {
   sticker.addEventListener("dragstart", e => {
     e.dataTransfer.setData("text/plain", sticker.textContent);
@@ -132,9 +159,11 @@ document.querySelectorAll("#stickers span").forEach(sticker => {
 });
 
 canvas.addEventListener("dragover", e => e.preventDefault());
+
 canvas.addEventListener("drop", e => {
   e.preventDefault();
   const emoji = e.dataTransfer.getData("text/plain");
+  if (!emoji) return;
   const rect = canvas.getBoundingClientRect();
   ctx.font = "40px serif";
   ctx.fillText(emoji, e.clientX - rect.left, e.clientY - rect.top);
