@@ -2,104 +2,30 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Piggy Photos 🐷📸</title>
 <style>
   body {
     background: #ffc0cb;
     font-family: 'Comic Sans MS', cursive, sans-serif;
-    color: #330000;
-    text-align: center;
     margin: 0; padding: 0;
+    text-align: center;
+    overflow-x: hidden;
     user-select: none;
-  }
-  h1 {
-    margin: 15px 0;
-    font-size: 2.8em;
-    text-shadow: 1px 1px 2px #660000;
-  }
-  #toolbar {
-    margin-bottom: 10px;
-  }
-  button, input[type="file"], select, input[type="color"], #filterIntensity {
-    margin: 5px;
-    padding: 10px 15px;
-    border-radius: 10px;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    font-size: 1em;
-  }
-  #colorPicker {
-    display: none;
+    touch-action: manipulation;
   }
   #canvas {
     border: 4px dashed #cc3366;
     background: white;
-    cursor: crosshair;
-    max-width: 90vw;
-    max-height: 70vh;
-    display: block;
-    margin: 0 auto;
+    max-width: 95vw;
+    touch-action: none; /* ¡Esto evita el scroll al dibujar! */
   }
-  .firma {
-    margin-top: 15px;
-    font-size: 0.9em;
-    color: #990033;
-    text-shadow: 1px 1px 1px #fff;
-  }
-  #stickers {
-    margin: 10px 0;
-    user-select: none;
-  }
-  .sticker {
-    font-size: 50px;
-    cursor: grab;
-    display: inline-block;
-    margin: 0 7px;
-  }
-  .sticker.dragging {
-    cursor: grabbing;
-  }
-  #canvasContainer {
-    position: relative;
-    display: inline-block;
-  }
-  #filterSelect {
-    padding: 10px 12px;
+  button, input, select {
+    margin: 5px;
+    padding: 10px;
     border-radius: 10px;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-  }
-  #filterIntensity {
-    width: 100px;
-  }
-  #textInputPopup {
-    position: fixed;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #ffc0cb;
-    border: 3px solid #cc3366;
-    padding: 20px;
-    display: none;
-    z-index: 1000;
-    border-radius: 15px;
-  }
-  #textInputPopup input[type="text"] {
-    font-size: 1.2em;
-    padding: 5px;
-    width: 300px;
-  }
-  #textInputPopup button {
-    margin-top: 10px;
-    padding: 10px 15px;
-    font-weight: bold;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
     font-size: 1em;
+    border: none;
   }
 </style>
 </head>
@@ -107,452 +33,115 @@
 
 <h1>🐷 Piggy Photos 📸</h1>
 
-<div id="toolbar">
-  <input type="file" id="upload" accept="image/*" title="Sube tu foto" />
-  
-  <label for="colorPicker">🎨 Color Pincel:</label>
-  <input type="color" id="colorPicker" value="#ff0000" title="Elige un color" />
-  
-  <select id="filterSelect" title="Filtros">
-    <option value="none">Normal</option>
-    <option value="grayscale">Blanco y negro</option>
-    <option value="sepia">Sepia</option>
-    <option value="invert">Invertir</option>
-    <option value="blur">Desenfoque</option>
-    <option value="brightness">Brillo</option>
-    <option value="contrast">Contraste</option>
-  </select>
-  <input type="range" id="filterIntensity" min="0" max="200" value="100" title="Intensidad filtro" />
-  
-  <button id="toggleBrush">🖌️ Pincel ON</button>
-  <button id="addTextBtn">✍️ Agregar Texto</button>
-  <button onclick="saveImage()">💾 Guardar</button>
-  <input type="file" id="customStickerUpload" accept="image/*" title="Sube tu sticker" style="margin-left:10px;" />
-</div>
-
-<div id="stickers" title="Arrastra un sticker para ponerlo en la imagen">
-  <span class="sticker" draggable="true">🐷</span>
-  <span class="sticker" draggable="true">🐽</span>
-  <span class="sticker" draggable="true">🐖</span>
-  <span class="sticker" draggable="true">🐗</span>
-</div>
-
-<div id="canvasContainer">
-  <canvas id="canvas" width="400" height="400"></canvas>
-</div>
-
-<div class="firma">Hecho por PiggyStudio121 😺</div>
-
-<!-- Popup para texto -->
-<div id="textInputPopup">
-  <p>Escribe tu texto para agregar:</p>
-  <input type="text" id="textInput" placeholder="Aquí tu texto" maxlength="40" />
-  <br />
-  <button id="addTextConfirm">Agregar</button>
-  <button id="addTextCancel">Cancelar</button>
+<input type="file" id="upload" accept="image/*" />
+<input type="color" id="colorPicker" value="#ff0000" />
+<button onclick="toggleBrush()">🖌️ Pincel</button>
+<button onclick="clearCanvas()">🧹 Limpiar</button>
+<button onclick="save()">💾 Guardar</button>
+<br />
+<canvas id="canvas" width="400" height="400"></canvas>
+<br />
+<div id="stickers">
+  <span draggable="true">🐷</span>
+  <span draggable="true">🐽</span>
+  <span draggable="true">🐖</span>
 </div>
 
 <script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const upload = document.getElementById('upload');
-  const colorPicker = document.getElementById('colorPicker');
-  const filterSelect = document.getElementById('filterSelect');
-  const filterIntensity = document.getElementById('filterIntensity');
-  const toggleBrushBtn = document.getElementById('toggleBrush');
-  const stickersDiv = document.getElementById('stickers');
-  const customStickerUpload = document.getElementById('customStickerUpload');
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const upload = document.getElementById("upload");
+const colorPicker = document.getElementById("colorPicker");
 
-  const textInputPopup = document.getElementById('textInputPopup');
-  const textInput = document.getElementById('textInput');
-  const addTextConfirm = document.getElementById('addTextConfirm');
-  const addTextCancel = document.getElementById('addTextCancel');
-  const addTextBtn = document.getElementById('addTextBtn');
+let painting = false;
+let brushEnabled = true;
 
-  let drawing = false;
-  let brushOn = true;
-  let color = colorPicker.value;
-  let imgOriginal = null;
-  let imgScale = 1;
-
-  let brushStrokes = [];
-  let stickersOnCanvas = [];
-  let textsOnCanvas = [];
-
-  const MAX_SIZE = 800;
-
-  // Para saber si estamos en modo texto para colocar
-  let placingText = false;
-
-  // Escalar imagen y ajustar canvas
-  function scaleAndCenterImage(img) {
-    let scale = 1;
-    if (img.width > MAX_SIZE || img.height > MAX_SIZE) {
-      scale = Math.min(MAX_SIZE / img.width, MAX_SIZE / img.height);
-    }
-    imgScale = scale;
-
-    canvas.width = img.width * scale;
-    canvas.height = img.height * scale;
-
-    redraw();
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault(); // ← bloquea scroll en Android
+  if (brushEnabled) {
+    painting = true;
+    drawTouch(e.touches[0]);
   }
+}, { passive: false });
 
-  // Cargar imagen
-  upload.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      const img = new Image();
-      img.onload = () => {
-        imgOriginal = img;
-        scaleAndCenterImage(img);
-      };
-      img.src = evt.target.result;
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault(); // ← bloquea scroll en Android
+  if (painting && brushEnabled) drawTouch(e.touches[0]);
+}, { passive: false });
+
+canvas.addEventListener("touchend", () => painting = false);
+
+canvas.addEventListener("mousedown", () => painting = brushEnabled);
+canvas.addEventListener("mouseup", () => painting = false);
+canvas.addEventListener("mousemove", e => {
+  if (painting && brushEnabled) drawMouse(e);
+});
+
+function drawMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  ctx.fillStyle = colorPicker.value;
+  ctx.beginPath();
+  ctx.arc(e.clientX - rect.left, e.clientY - rect.top, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTouch(touch) {
+  const rect = canvas.getBoundingClientRect();
+  ctx.fillStyle = colorPicker.value;
+  ctx.beginPath();
+  ctx.arc(touch.clientX - rect.left, touch.clientY - rect.top, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function toggleBrush() {
+  brushEnabled = !brushEnabled;
+  alert("Pincel: " + (brushEnabled ? "Activado" : "Desactivado"));
+}
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function save() {
+  const link = document.createElement("a");
+  link.download = "piggy-photo.png";
+  link.href = canvas.toDataURL();
+  link.click();
+}
+
+upload.addEventListener("change", e => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
     };
-    reader.readAsDataURL(file);
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag & Drop stickers
+document.querySelectorAll("#stickers span").forEach(sticker => {
+  sticker.addEventListener("dragstart", e => {
+    e.dataTransfer.setData("text/plain", sticker.textContent);
   });
+});
 
-  // Cambiar color pincel
-  colorPicker.addEventListener('change', e => {
-    color = e.target.value;
-  });
-
-  // Filtrar CSS dinámico según filtro y slider
-  function getFilterCSS() {
-    const intensity = filterIntensity.value / 100;
-    switch(filterSelect.value) {
-      case 'grayscale': return `grayscale(${intensity})`;
-      case 'sepia': return `sepia(${intensity})`;
-      case 'invert': return `invert(${intensity})`;
-      case 'blur': return `blur(${intensity * 5}px)`;
-      case 'brightness': return `brightness(${intensity * 2})`;
-      case 'contrast': return `contrast(${intensity * 2})`;
-      default: return 'none';
-    }
-  }
-
-  filterSelect.addEventListener('change', redraw);
-  filterIntensity.addEventListener('input', redraw);
-
-  // Dibujar pincel
-  canvas.addEventListener('mousedown', e => {
-    if (placingText) {
-      // Colocar texto
-      placeTextAt(e);
-      return;
-    }
-    if (!brushOn) return;
-    drawing = true;
-    addBrushStroke(e);
-  });
-  canvas.addEventListener('mouseup', () => drawing = false);
-  canvas.addEventListener('mouseleave', () => drawing = false);
-  canvas.addEventListener('mousemove', e => {
-    if (!drawing || !brushOn) return;
-    addBrushStroke(e);
-  });
-
-  function addBrushStroke(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    brushStrokes.push({ x, y, color });
-    drawStroke({ x, y, color });
-  }
-
-  function drawStroke(stroke) {
-    ctx.fillStyle = stroke.color;
-    ctx.beginPath();
-    ctx.arc(stroke.x, stroke.y, 5, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-
-  // Dibujar todo: imagen, pincel, stickers, texto
-  function redraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.filter = getFilterCSS();
-    if(imgOriginal) {
-      ctx.drawImage(imgOriginal, 0, 0, imgOriginal.width * imgScale, imgOriginal.height * imgScale);
-    }
-    ctx.filter = 'none';
-
-    // Dibujar pincel
-    brushStrokes.forEach(drawStroke);
-
-    // Dibujar stickers
-    stickersOnCanvas.forEach(st => {
-      if (st.type === 'emoji') {
-        ctx.font = '50px serif';
-        ctx.fillText(st.emoji, st.x, st.y);
-      } else if (st.type === 'image' && st.img) {
-        ctx.drawImage(st.img, st.x, st.y, st.width, st.height);
-      }
-    });
-
-    // Dibujar textos
-    textsOnCanvas.forEach(txt => {
-      ctx.font = `${txt.size}px Arial`;
-      ctx.fillStyle = txt.color;
-      ctx.fillText(txt.text, txt.x, txt.y);
-    });
-  }
-
-  // Alternar pincel
-  toggleBrushBtn.addEventListener('click', () => {
-    brushOn = !brushOn;
-    if (brushOn) placingText = false;
-    toggleBrushBtn.textContent = brushOn ? '🖌️ Pincel ON' : '❌ Pincel OFF';
-    canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-  });
-
-  // Guardar imagen final
-  function saveImage() {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tCtx = tempCanvas.getContext('2d');
-
-    tCtx.filter = getFilterCSS();
-    if(imgOriginal) {
-      tCtx.drawImage(imgOriginal, 0, 0, imgOriginal.width * imgScale, imgOriginal.height * imgScale);
-    }
-    tCtx.filter = 'none';
-
-    brushStrokes.forEach(stroke => {
-      tCtx.fillStyle = stroke.color;
-      tCtx.beginPath();
-      tCtx.arc(stroke.x, stroke.y, 5, 0, 2 * Math.PI);
-      tCtx.fill();
-    });
-
-    stickersOnCanvas.forEach(st => {
-      if (st.type === 'emoji') {
-        tCtx.font = '50px serif';
-        tCtx.fillText(st.emoji, st.x, st.y);
-      } else if (st.type === 'image' && st.img) {
-        tCtx.drawImage(st.img, st.x, st.y, st.width, st.height);
-      }
-    });
-
-    textsOnCanvas.forEach(txt => {
-      tCtx.font = `${txt.size}px Arial`;
-      tCtx.fillStyle = txt.color;
-      tCtx.fillText(txt.text, txt.x, txt.y);
-    });
-
-    const link = document.createElement('a');
-    link.download = 'piggy-photo.png';
-    link.href = tempCanvas.toDataURL('image/png');
-    link.click();
-  }
-
-  // Stickers emojis para arrastrar
-  stickersDiv.querySelectorAll('.sticker').forEach(emojiEl => {
-    emojiEl.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'emoji', content: emojiEl.textContent }));
-    });
-  });
-
-  canvas.addEventListener('dragover', e => e.preventDefault());
-
-  canvas.addEventListener('drop', e => {
-    e.preventDefault();
-    const data = e.dataTransfer.getData('text/plain');
-    if (!data) return;
-
-    try {
-      const obj = JSON.parse(data);
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      if (obj.type === 'emoji') {
-        stickersOnCanvas.push({ type: 'emoji', emoji: obj.content, x, y });
-        redraw();
-      } else if (obj.type === 'image') {
-        const img = new Image();
-        img.onload = () => {
-          stickersOnCanvas.push({ type: 'image', img, x, y, width: 50, height: 50 });
-          redraw();
-        };
-        img.src = obj.content;
-      }
-    } catch {}
-  });
-
-  // Subir sticker personalizado
-  customStickerUpload.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      const img = new Image();
-      img.onload = () => {
-        const span = document.createElement('span');
-        span.classList.add('sticker');
-        span.style.fontSize = '0';
-        span.style.width = '50px';
-        span.style.height = '50px';
-        span.style.display = 'inline-block';
-        span.style.backgroundImage = `url(${evt.target.result})`;
-        span.style.backgroundSize = 'contain';
-        span.style.backgroundRepeat = 'no-repeat';
-        span.setAttribute('draggable', 'true');
-        span.setAttribute('title', 'Sticker personalizado');
-
-        span.addEventListener('dragstart', e => {
-          e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'image', content: evt.target.result }));
-        });
-
-        stickersDiv.appendChild(span);
-      };
-      img.src = evt.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Mover stickers y textos con mouse
-
-  let draggingIndex = null;
-  let draggingType = null; // 'sticker' o 'text'
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
-
-  canvas.addEventListener('mousedown', e => {
-    if (brushOn || placingText) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    // Primero revisar textos (en orden inverso para coger el último dibujado primero)
-    for (let i = textsOnCanvas.length - 1; i >= 0; i--) {
-      const txt = textsOnCanvas[i];
-      const width = ctx.measureText(txt.text).width;
-      const height = txt.size; // aprox altura
-
-      if (mx >= txt.x && mx <= txt.x + width && my >= txt.y - height && my <= txt.y) {
-        draggingIndex = i;
-        draggingType = 'text';
-        dragOffsetX = mx - txt.x;
-        dragOffsetY = my - txt.y;
-        canvas.style.cursor = 'grabbing';
-        return;
-      }
-    }
-
-    // Luego stickers
-    for (let i = stickersOnCanvas.length - 1; i >= 0; i--) {
-      const st = stickersOnCanvas[i];
-      if (st.type === 'emoji') {
-        const x = st.x;
-        const y = st.y - 40;
-        if (mx >= x && mx <= x + 50 && my >= y && my <= y + 50) {
-          draggingIndex = i;
-          draggingType = 'sticker';
-          dragOffsetX = mx - x;
-          dragOffsetY = my - y;
-          canvas.style.cursor = 'grabbing';
-          return;
-        }
-      } else if (st.type === 'image') {
-        const x = st.x;
-        const y = st.y;
-        if (mx >= x && mx <= x + st.width && my >= y && my <= y + st.height) {
-          draggingIndex = i;
-          draggingType = 'sticker';
-          dragOffsetX = mx - x;
-          dragOffsetY = my - y;
-          canvas.style.cursor = 'grabbing';
-          return;
-        }
-      }
-    }
-  });
-
-  canvas.addEventListener('mousemove', e => {
-    if (draggingIndex === null) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    if (draggingType === 'sticker') {
-      stickersOnCanvas[draggingIndex].x = mx - dragOffsetX;
-      stickersOnCanvas[draggingIndex].y = my - dragOffsetY;
-    } else if (draggingType === 'text') {
-      textsOnCanvas[draggingIndex].x = mx - dragOffsetX;
-      textsOnCanvas[draggingIndex].y = my - dragOffsetY;
-    }
-    redraw();
-  });
-
-  canvas.addEventListener('mouseup', () => {
-    draggingIndex = null;
-    draggingType = null;
-    canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-  });
-  canvas.addEventListener('mouseleave', () => {
-    draggingIndex = null;
-    draggingType = null;
-    canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-  });
-
-  // Función para activar modo texto
-  addTextBtn.addEventListener('click', () => {
-    if (placingText) {
-      placingText = false;
-      addTextBtn.textContent = '✍️ Agregar Texto';
-      canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-    } else {
-      placingText = true;
-      addTextBtn.textContent = '❌ Cancelar Texto';
-      canvas.style.cursor = 'text';
-      toggleBrushBtn.textContent = '❌ Pincel OFF';
-      brushOn = false;
-    }
-  });
-
-  // Cuando se coloca texto en canvas con click
-  function placeTextAt(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    // Mostrar popup para que escriba texto
-    textInputPopup.style.display = 'block';
-    textInput.value = '';
-    textInput.focus();
-
-    addTextConfirm.onclick = () => {
-      const text = textInput.value.trim();
-      if (text.length > 0) {
-        textsOnCanvas.push({
-          text,
-          x,
-          y,
-          color,
-          size: 40
-        });
-        redraw();
-      }
-      textInputPopup.style.display = 'none';
-      placingText = false;
-      addTextBtn.textContent = '✍️ Agregar Texto';
-      canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-    };
-
-    addTextCancel.onclick = () => {
-      textInputPopup.style.display = 'none';
-      placingText = false;
-      addTextBtn.textContent = '✍️ Agregar Texto';
-      canvas.style.cursor = brushOn ? 'crosshair' : 'default';
-    };
-  }
-
-  // Inicio con color picker visible
-  colorPicker.style.display = 'inline-block';
-
+canvas.addEventListener("dragover", e => e.preventDefault());
+canvas.addEventListener("drop", e => {
+  e.preventDefault();
+  const emoji = e.dataTransfer.getData("text/plain");
+  const rect = canvas.getBoundingClientRect();
+  ctx.font = "40px serif";
+  ctx.fillText(emoji, e.clientX - rect.left, e.clientY - rect.top);
+});
 </script>
+
+<p style="margin: 20px;">Hecho por PiggyStudio121 😺</p>
 
 </body>
 </html>
