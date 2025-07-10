@@ -14,13 +14,23 @@
     font-family: 'Comic Sans MS', cursive, sans-serif;
     text-align: center;
   }
-  #canvas {
+  #editor {
+    position: relative;
+    display: inline-block;
     border: 4px dashed #cc3366;
     background: white;
-    max-width: 95vw;
+  }
+  canvas {
+    display: block;
     touch-action: none;
   }
-  button, input, select {
+  .sticker {
+    position: absolute;
+    font-size: 40px;
+    cursor: move;
+    user-select: none;
+  }
+  button, input {
     margin: 5px;
     padding: 10px;
     border-radius: 10px;
@@ -46,27 +56,32 @@
 
 <br />
 
-<canvas id="canvas" width="400" height="400"></canvas>
+<div id="editor">
+  <canvas id="canvas" width="400" height="400"></canvas>
+</div>
 
 <br />
 
-<div id="stickers" title="Arrastra los stickers al lienzo">
-  <span draggable="true">🐷</span>
-  <span draggable="true">🐽</span>
-  <span draggable="true">🐖</span>
-  <span draggable="true">😻</span>
-  <span draggable="true">🎀</span>
+<div id="stickers" title="Toca para agregar un sticker">
+  <span>🐷</span>
+  <span>🐽</span>
+  <span>🐖</span>
+  <span>😻</span>
+  <span>🎀</span>
 </div>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const upload = document.getElementById("upload");
+const editor = document.getElementById("editor");
 
-// Evitar scroll y gestos táctiles
+let scale = 1;
+
+// Evita scroll y gestos táctiles
 ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(evt => {
   document.body.addEventListener(evt, e => {
-    if (e.target === canvas || canvas.contains(e.target)) {
+    if (editor.contains(e.target)) {
       e.preventDefault();
     }
   }, { passive: false });
@@ -86,11 +101,13 @@ upload.addEventListener("change", e => {
       let imgHeight = img.height;
       const widthRatio = maxWidth / imgWidth;
       const heightRatio = maxHeight / imgHeight;
-      const scale = Math.min(widthRatio, heightRatio, 1);
+      scale = Math.min(widthRatio, heightRatio, 1);
       const newWidth = imgWidth * scale;
       const newHeight = imgHeight * scale;
       canvas.width = newWidth;
       canvas.height = newHeight;
+      editor.style.width = newWidth + "px";
+      editor.style.height = newHeight + "px";
       ctx.clearRect(0, 0, newWidth, newHeight);
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
     };
@@ -101,35 +118,93 @@ upload.addEventListener("change", e => {
 
 function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Elimina todos los stickers
+  document.querySelectorAll('.sticker').forEach(s => s.remove());
 }
 
 function save() {
+  // Crear un nuevo canvas temporal
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tempCtx = tempCanvas.getContext("2d");
+
+  // Copiar la imagen del canvas original
+  tempCtx.drawImage(canvas, 0, 0);
+
+  // Dibujar todos los stickers
+  const stickers = document.querySelectorAll(".sticker");
+  stickers.forEach(sticker => {
+    const x = parseFloat(sticker.style.left);
+    const y = parseFloat(sticker.style.top);
+    const emoji = sticker.textContent;
+    tempCtx.font = "40px serif";
+    tempCtx.fillText(emoji, x, y + 40); // ajusta Y para que quede centrado
+  });
+
+  // Descargar la imagen final
   const link = document.createElement("a");
   link.download = "piggy-photo.png";
-  link.href = canvas.toDataURL();
+  link.href = tempCanvas.toDataURL();
   link.click();
 }
 
-// Stickers
+// Crear stickers móviles
 document.querySelectorAll("#stickers span").forEach(sticker => {
-  sticker.addEventListener("dragstart", e => {
-    e.dataTransfer.setData("text/plain", sticker.textContent);
+  sticker.addEventListener("click", () => {
+    const el = document.createElement("div");
+    el.className = "sticker";
+    el.textContent = sticker.textContent;
+    el.style.left = "50px";
+    el.style.top = "50px";
+    editor.appendChild(el);
+
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    el.addEventListener("mousedown", e => {
+      isDragging = true;
+      offsetX = e.offsetX;
+      offsetY = e.offsetY;
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (isDragging) {
+        const rect = editor.getBoundingClientRect();
+        el.style.left = (e.clientX - rect.left - offsetX) + "px";
+        el.style.top = (e.clientY - rect.top - offsetY) + "px";
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+    });
+
+    // Soporte táctil
+    el.addEventListener("touchstart", e => {
+      isDragging = true;
+      const touch = e.touches[0];
+      offsetX = touch.clientX - el.getBoundingClientRect().left;
+      offsetY = touch.clientY - el.getBoundingClientRect().top;
+    }, { passive: false });
+
+    document.addEventListener("touchmove", e => {
+      if (isDragging) {
+        const touch = e.touches[0];
+        const rect = editor.getBoundingClientRect();
+        el.style.left = (touch.clientX - rect.left - offsetX) + "px";
+        el.style.top = (touch.clientY - rect.top - offsetY) + "px";
+      }
+    }, { passive: false });
+
+    document.addEventListener("touchend", () => {
+      isDragging = false;
+    });
   });
-});
-
-canvas.addEventListener("dragover", e => e.preventDefault());
-
-canvas.addEventListener("drop", e => {
-  e.preventDefault();
-  const emoji = e.dataTransfer.getData("text/plain");
-  if (!emoji) return;
-  const rect = canvas.getBoundingClientRect();
-  ctx.font = "40px serif";
-  ctx.fillText(emoji, e.clientX - rect.left, e.clientY - rect.top);
 });
 </script>
 
-<p style="margin: 20px;">Hecho con amor por PiggyStudio121 🐷💖</p>
+<p style="margin: 20px;">Hecho con cariño por PiggyStudio121 🐷💖</p>
 
 </body>
 </html>
