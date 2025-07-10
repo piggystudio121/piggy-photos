@@ -7,8 +7,8 @@
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%;
-    overflow: hidden; /* Bloquea scroll vertical/horizontal */
-    touch-action: none; /* Bloquea gestos táctiles como zoom y scroll */
+    overflow: hidden;
+    touch-action: none;
     user-select: none;
     background: #ffc0cb;
     font-family: 'Comic Sans MS', cursive, sans-serif;
@@ -18,7 +18,7 @@
     border: 4px dashed #cc3366;
     background: white;
     max-width: 95vw;
-    touch-action: none; /* Bloquea gestos táctiles en el canvas */
+    touch-action: none;
   }
   button, input, select {
     margin: 5px;
@@ -41,8 +41,6 @@
 <h1>🐷 Piggy Photos 📸</h1>
 
 <input type="file" id="upload" accept="image/*" />
-<input type="color" id="colorPicker" value="#ff0000" />
-<button id="btnToggleBrush">🖌️ Pincel ON</button>
 <button onclick="clearCanvas()">🧹 Limpiar</button>
 <button onclick="save()">💾 Guardar</button>
 
@@ -56,19 +54,16 @@
   <span draggable="true">🐷</span>
   <span draggable="true">🐽</span>
   <span draggable="true">🐖</span>
+  <span draggable="true">😻</span>
+  <span draggable="true">🎀</span>
 </div>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const upload = document.getElementById("upload");
-const colorPicker = document.getElementById("colorPicker");
-const btnToggleBrush = document.getElementById("btnToggleBrush");
 
-let painting = false;
-let brushEnabled = true;
-
-// Evitar scroll y gestos del navegador en el canvas y document body
+// Evitar scroll y gestos táctiles
 ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(evt => {
   document.body.addEventListener(evt, e => {
     if (e.target === canvas || canvas.contains(e.target)) {
@@ -77,50 +72,31 @@ let brushEnabled = true;
   }, { passive: false });
 });
 
-canvas.addEventListener("touchstart", e => {
-  if (!brushEnabled) return;
-  painting = true;
-  drawTouch(e.touches[0]);
-}, { passive: false });
-
-canvas.addEventListener("touchmove", e => {
-  if (!painting || !brushEnabled) return;
-  drawTouch(e.touches[0]);
-}, { passive: false });
-
-canvas.addEventListener("touchend", e => {
-  painting = false;
-}, { passive: false });
-
-canvas.addEventListener("mousedown", () => {
-  if (brushEnabled) painting = true;
-});
-canvas.addEventListener("mouseup", () => {
-  painting = false;
-});
-canvas.addEventListener("mousemove", e => {
-  if (painting && brushEnabled) drawMouse(e);
-});
-
-function drawMouse(e) {
-  const rect = canvas.getBoundingClientRect();
-  ctx.fillStyle = colorPicker.value;
-  ctx.beginPath();
-  ctx.arc(e.clientX - rect.left, e.clientY - rect.top, 5, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawTouch(touch) {
-  const rect = canvas.getBoundingClientRect();
-  ctx.fillStyle = colorPicker.value;
-  ctx.beginPath();
-  ctx.arc(touch.clientX - rect.left, touch.clientY - rect.top, 5, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-btnToggleBrush.addEventListener("click", () => {
-  brushEnabled = !brushEnabled;
-  btnToggleBrush.textContent = brushEnabled ? "🖌️ Pincel ON" : "❌ Pincel OFF";
+// Subir imagen y redimensionarla
+upload.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const img = new Image();
+    img.onload = () => {
+      const maxWidth = window.innerWidth * 0.95;
+      const maxHeight = window.innerHeight * 0.6;
+      let imgWidth = img.width;
+      let imgHeight = img.height;
+      const widthRatio = maxWidth / imgWidth;
+      const heightRatio = maxHeight / imgHeight;
+      const scale = Math.min(widthRatio, heightRatio, 1);
+      const newWidth = imgWidth * scale;
+      const newHeight = imgHeight * scale;
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      ctx.clearRect(0, 0, newWidth, newHeight);
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
 });
 
 function clearCanvas() {
@@ -134,24 +110,7 @@ function save() {
   link.click();
 }
 
-upload.addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = evt.target.result;
-  };
-  reader.readAsDataURL(file);
-});
-
-// Stickers arrastrables
+// Stickers
 document.querySelectorAll("#stickers span").forEach(sticker => {
   sticker.addEventListener("dragstart", e => {
     e.dataTransfer.setData("text/plain", sticker.textContent);
@@ -170,7 +129,7 @@ canvas.addEventListener("drop", e => {
 });
 </script>
 
-<p style="margin: 20px;">Hecho por PiggyStudio121 😺</p>
+<p style="margin: 20px;">Hecho con amor por PiggyStudio121 🐷💖</p>
 
 </body>
 </html>
