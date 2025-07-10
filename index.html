@@ -1,56 +1,94 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Piggy Photos 🐷📸</title>
-<style>
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    overflow: hidden;
-    touch-action: none;
-    user-select: none;
-    background: #ffc0cb;
-    font-family: 'Comic Sans MS', cursive, sans-serif;
-    text-align: center;
-  }
-  #editor {
-    position: relative;
-    display: inline-block;
-    border: 4px dashed #cc3366;
-    background: white;
-  }
-  canvas {
-    display: block;
-    touch-action: none;
-  }
-  .sticker {
-    position: absolute;
-    font-size: 40px;
-    cursor: move;
-    user-select: none;
-  }
-  button, input {
-    margin: 5px;
-    padding: 10px;
-    border-radius: 10px;
-    font-size: 1em;
-    border: none;
-    cursor: pointer;
-  }
-  #stickers span {
-    font-size: 40px;
-    cursor: grab;
-    user-select: none;
-    margin: 0 5px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piggy Photos 🐷📸</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: #ffc0cb;
+      font-family: 'Comic Sans MS', cursive;
+      user-select: none;
+      touch-action: none;
+      text-align: center;
+    }
+    #editor {
+      position: relative;
+      display: inline-block;
+      border: 4px dashed #cc3366;
+      background: white;
+    }
+    canvas {
+      display: block;
+      max-width: 95vw;
+      touch-action: none;
+    }
+    .sticker {
+      position: absolute;
+      cursor: move;
+      user-select: none;
+      display: inline-block;
+    }
+    .sticker img {
+      width: 80px;
+      height: 80px;
+      pointer-events: none;
+    }
+    .controls {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: white;
+      border-radius: 10px;
+      padding: 2px;
+      display: flex;
+      gap: 5px;
+    }
+    .controls button {
+      font-size: 14px;
+      padding: 2px 5px;
+      cursor: pointer;
+    }
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.6);
+      cursor: se-resize;
+    }
+    button, input, select {
+      margin: 5px;
+      padding: 10px;
+      font-size: 1em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #stickers span {
+      font-size: 40px;
+      cursor: pointer;
+      margin: 0 5px;
+    }
+  </style>
 </head>
 <body>
 
 <h1>🐷 Piggy Photos 📸</h1>
 
 <input type="file" id="upload" accept="image/*" />
+<input type="file" id="customSticker" accept="image/*" />
+<select id="filter">
+  <option value="none">🎨 Sin filtro</option>
+  <option value="grayscale(100%)">⚫ Blanco y negro</option>
+  <option value="sepia(100%)">🟤 Sepia</option>
+  <option value="brightness(150%)">🌞 Brillo</option>
+  <option value="contrast(200%)">✨ Contraste</option>
+  <option value="invert(100%)">🌈 Invertir</option>
+</select>
 <button onclick="clearCanvas()">🧹 Limpiar</button>
 <button onclick="save()">💾 Guardar</button>
 
@@ -62,32 +100,29 @@
 
 <br />
 
-<div id="stickers" title="Toca para agregar un sticker">
+<div id="stickers">
   <span>🐷</span>
   <span>🐽</span>
-  <span>🐖</span>
-  <span>😻</span>
   <span>🎀</span>
+  <span>😻</span>
 </div>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const upload = document.getElementById("upload");
 const editor = document.getElementById("editor");
+const upload = document.getElementById("upload");
+const filter = document.getElementById("filter");
+const customSticker = document.getElementById("customSticker");
 
 let scale = 1;
 
-// Evita scroll y gestos táctiles
-['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(evt => {
+['touchstart', 'touchmove', 'touchend'].forEach(evt => {
   document.body.addEventListener(evt, e => {
-    if (editor.contains(e.target)) {
-      e.preventDefault();
-    }
+    if (editor.contains(e.target)) e.preventDefault();
   }, { passive: false });
 });
 
-// Subir imagen y redimensionarla
 upload.addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -97,18 +132,16 @@ upload.addEventListener("change", e => {
     img.onload = () => {
       const maxWidth = window.innerWidth * 0.95;
       const maxHeight = window.innerHeight * 0.6;
-      let imgWidth = img.width;
-      let imgHeight = img.height;
-      const widthRatio = maxWidth / imgWidth;
-      const heightRatio = maxHeight / imgHeight;
+      const widthRatio = maxWidth / img.width;
+      const heightRatio = maxHeight / img.height;
       scale = Math.min(widthRatio, heightRatio, 1);
-      const newWidth = imgWidth * scale;
-      const newHeight = imgHeight * scale;
+      const newWidth = img.width * scale;
+      const newHeight = img.height * scale;
       canvas.width = newWidth;
       canvas.height = newHeight;
       editor.style.width = newWidth + "px";
       editor.style.height = newHeight + "px";
-      ctx.clearRect(0, 0, newWidth, newHeight);
+      ctx.filter = filter.value;
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
     };
     img.src = evt.target.result;
@@ -116,95 +149,131 @@ upload.addEventListener("change", e => {
   reader.readAsDataURL(file);
 });
 
+filter.addEventListener("change", () => {
+  if (canvas.width > 0 && canvas.height > 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    upload.dispatchEvent(new Event('change')); // Reaplica imagen con nuevo filtro
+  }
+});
+
 function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Elimina todos los stickers
   document.querySelectorAll('.sticker').forEach(s => s.remove());
 }
 
 function save() {
-  // Crear un nuevo canvas temporal
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext("2d");
-
-  // Copiar la imagen del canvas original
+  tempCtx.filter = filter.value;
   tempCtx.drawImage(canvas, 0, 0);
 
-  // Dibujar todos los stickers
-  const stickers = document.querySelectorAll(".sticker");
-  stickers.forEach(sticker => {
-    const x = parseFloat(sticker.style.left);
-    const y = parseFloat(sticker.style.top);
-    const emoji = sticker.textContent;
-    tempCtx.font = "40px serif";
-    tempCtx.fillText(emoji, x, y + 40); // ajusta Y para que quede centrado
+  const stickers = document.querySelectorAll(".sticker img");
+  stickers.forEach(img => {
+    const parent = img.parentElement;
+    const x = parseFloat(parent.style.left);
+    const y = parseFloat(parent.style.top);
+    const w = img.width;
+    const h = img.height;
+    tempCtx.drawImage(img, x, y, w, h);
   });
 
-  // Descargar la imagen final
   const link = document.createElement("a");
   link.download = "piggy-photo.png";
   link.href = tempCanvas.toDataURL();
   link.click();
 }
 
-// Crear stickers móviles
 document.querySelectorAll("#stickers span").forEach(sticker => {
   sticker.addEventListener("click", () => {
-    const el = document.createElement("div");
-    el.className = "sticker";
-    el.textContent = sticker.textContent;
-    el.style.left = "50px";
-    el.style.top = "50px";
-    editor.appendChild(el);
-
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    el.addEventListener("mousedown", e => {
-      isDragging = true;
-      offsetX = e.offsetX;
-      offsetY = e.offsetY;
-    });
-
-    document.addEventListener("mousemove", e => {
-      if (isDragging) {
-        const rect = editor.getBoundingClientRect();
-        el.style.left = (e.clientX - rect.left - offsetX) + "px";
-        el.style.top = (e.clientY - rect.top - offsetY) + "px";
-      }
-    });
-
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-    });
-
-    // Soporte táctil
-    el.addEventListener("touchstart", e => {
-      isDragging = true;
-      const touch = e.touches[0];
-      offsetX = touch.clientX - el.getBoundingClientRect().left;
-      offsetY = touch.clientY - el.getBoundingClientRect().top;
-    }, { passive: false });
-
-    document.addEventListener("touchmove", e => {
-      if (isDragging) {
-        const touch = e.touches[0];
-        const rect = editor.getBoundingClientRect();
-        el.style.left = (touch.clientX - rect.left - offsetX) + "px";
-        el.style.top = (touch.clientY - rect.top - offsetY) + "px";
-      }
-    }, { passive: false });
-
-    document.addEventListener("touchend", () => {
-      isDragging = false;
-    });
+    createStickerFromEmoji(sticker.textContent);
   });
 });
+
+function createStickerFromEmoji(emoji) {
+  const el = document.createElement("div");
+  el.className = "sticker";
+  el.style.left = "50px";
+  el.style.top = "50px";
+
+  const emojiImg = document.createElement("img");
+  emojiImg.src = `https://api.dicebear.com/7.x/notion/svg?seed=${encodeURIComponent(emoji)}`;
+  emojiImg.alt = emoji;
+  el.appendChild(emojiImg);
+
+  makeStickerInteractive(el);
+  editor.appendChild(el);
+}
+
+customSticker.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const el = document.createElement("div");
+    el.className = "sticker";
+    el.style.left = "50px";
+    el.style.top = "50px";
+
+    const img = document.createElement("img");
+    img.src = evt.target.result;
+    el.appendChild(img);
+
+    makeStickerInteractive(el);
+    editor.appendChild(el);
+  };
+  reader.readAsDataURL(file);
+});
+
+function makeStickerInteractive(stickerDiv) {
+  const controls = document.createElement("div");
+  controls.className = "controls";
+
+  const delBtn = document.createElement("button");
+  delBtn.textContent = "❌";
+  delBtn.onclick = () => stickerDiv.remove();
+
+  controls.appendChild(delBtn);
+  stickerDiv.appendChild(controls);
+
+  const handle = document.createElement("div");
+  handle.className = "resize-handle";
+  stickerDiv.appendChild(handle);
+
+  let dragging = false, resizing = false, offsetX, offsetY;
+
+  stickerDiv.addEventListener("mousedown", e => {
+    if (e.target === handle) {
+      resizing = true;
+    } else {
+      dragging = true;
+      offsetX = e.offsetX;
+      offsetY = e.offsetY;
+    }
+  });
+
+  document.addEventListener("mousemove", e => {
+    if (dragging) {
+      const rect = editor.getBoundingClientRect();
+      stickerDiv.style.left = (e.clientX - rect.left - offsetX) + "px";
+      stickerDiv.style.top = (e.clientY - rect.top - offsetY) + "px";
+    }
+    if (resizing) {
+      const img = stickerDiv.querySelector("img");
+      img.style.width = e.movementX + img.clientWidth + "px";
+      img.style.height = "auto";
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    dragging = false;
+    resizing = false;
+  });
+}
 </script>
 
-<p style="margin: 20px;">Hecho con cariño por PiggyStudio121 🐷💖</p>
+<p style="margin: 20px;">Hecho con amor por PiggyStudio121 🐷✨</p>
 
 </body>
 </html>
